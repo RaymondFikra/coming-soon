@@ -31,29 +31,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add intersection observer for fade-in animations on scroll
+    // Add intersection observer for smooth scroll-triggered animations
     const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -100px 0px'
+        threshold: 0.15,
+        rootMargin: '0px 0px -80px 0px'
     };
 
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.classList.add('visible');
             }
         });
     }, observerOptions);
 
-    // Observe all sections
+    // Observe all sections for smooth reveal
     const sections = document.querySelectorAll('.section');
     sections.forEach(section => {
-        section.style.opacity = '0';
-        section.style.transform = 'translateY(30px)';
-        section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
         observer.observe(section);
     });
+
+    // Observe trust badge
+    const trustBadge = document.querySelector('.trust-section');
+    if (trustBadge) {
+        observer.observe(trustBadge);
+    }
 });
 
 function handleFormSubmit(form) {
