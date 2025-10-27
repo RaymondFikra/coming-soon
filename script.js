@@ -150,16 +150,6 @@ function trackConversion(email) {
     console.log('Conversion tracked for:', email);
 }
 
-// Add parallax effect to hero section
-document.addEventListener('scroll', function() {
-    const hero = document.querySelector('.hero');
-    if (hero) {
-        const scrolled = window.pageYOffset;
-        const rate = scrolled * 0.5;
-        hero.style.transform = `translate3d(0, ${rate}px, 0)`;
-    }
-});
-
 // Easter egg: Log welcome message
 console.log('%cWelcome to Fikra! 🚀', 'color: #667eea; font-size: 24px; font-weight: bold;');
 console.log('%cConnecting employee insights with leadership decisions', 'color: #764ba2; font-size: 14px;');
