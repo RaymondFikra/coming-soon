@@ -1,14 +1,52 @@
 version: 1
 frontend:
+  # This config supports both static sites (no package.json) and
+  # Node-based projects (npm run build). It creates a single
+  # `amplify_output` folder and copies the appropriate files there,
+  # so Amplify can always deploy from `baseDirectory: amplify_output`.
   phases:
-    # No build needed for static HTML/CSS/JS
+    preBuild:
+      commands:
+        - echo "Preparing amplify_output directory"
+        - rm -rf amplify_output || true
+        - mkdir -p amplify_output
+        - |
+          if [ -f package.json ]; then
+            echo "Node project detected — installing dependencies and running build"
+            npm ci
+            npm run build
+            # Prefer common build folders
+            if [ -d build ]; then
+              cp -r build/* amplify_output/
+            elif [ -d dist ]; then
+              cp -r dist/* amplify_output/
+            else
+              echo "Build finished but no 'build' or 'dist' folder found. Leaving amplify_output empty."
+            fi
+          else
+            echo "No package.json — treating repo as a static site"
+          fi
     build:
       commands:
-        - echo "No build required - deploying static files"
+        - echo "Finalizing artifacts"
+        - |
+          # If amplify_output is still empty (static site or build output absent), copy repo root files
+          if [ -z "$(ls -A amplify_output 2>/dev/null)" ]; then
+            echo "amplify_output empty — copying repo root files into amplify_output"
+            # Copy everything except .git and amplify_output itself
+            shopt -s dotglob || true
+            for f in *; do
+              if [ "$f" != "amplify_output" ] && [ "$f" != ".git" ]; then
+                cp -r "$f" amplify_output/ || true
+              fi
+            done
+          else
+            echo "amplify_output contains built/static files"
+          fi
   artifacts:
-    # Serve everything from the root directory
-    baseDirectory: /
+    baseDirectory: amplify_output
     files:
       - '**/*'
   cache:
-    paths: []
+    paths:
+      - node_modules/**/*
