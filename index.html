@@ -29,7 +29,8 @@
 
                 <!-- Email Signup Form -->
                 <div class="email-signup fade-in-delay-3">
-                    <form id="newsletter-form" class="signup-form">
+                    <form id="newsletter-form" class="signup-form" data-endpoint="">
+                        <label for="email" class="sr-only">Email address for early access</label>
                         <input
                             type="email"
                             id="email"
@@ -37,12 +38,14 @@
                             placeholder="Enter your email address"
                             required
                             class="email-input"
+                            aria-label="Email address"
                         >
                         <button type="submit" class="submit-btn">
                             <span class="btn-text">Get Early Access</span>
-                            <span class="btn-icon">→</span>
+                            <span class="btn-icon" aria-hidden="true">→</span>
                         </button>
                     </form>
+                    <div class="form-message" role="status" aria-live="polite"></div>
                     <p class="privacy-notice">We respect your privacy. Unsubscribe anytime.</p>
                 </div>
             </div>
@@ -159,19 +162,23 @@
             <h3 class="cta-title">Ready to unlock your team's potential?</h3>
             <p class="cta-subtitle">Join our waitlist for early access</p>
             <div class="email-signup">
-                <form id="newsletter-form-footer" class="signup-form">
+                <form id="newsletter-form-footer" class="signup-form" data-endpoint="">
+                    <label for="email-footer" class="sr-only">Email address for early access</label>
                     <input
                         type="email"
+                        id="email-footer"
                         name="email"
                         placeholder="Enter your email address"
                         required
                         class="email-input"
+                        aria-label="Email address"
                     >
                     <button type="submit" class="submit-btn">
                         <span class="btn-text">Get Early Access</span>
-                        <span class="btn-icon">→</span>
+                        <span class="btn-icon" aria-hidden="true">→</span>
                     </button>
                 </form>
+                <div class="form-message" role="status" aria-live="polite"></div>
             </div>
         </div>
     </section>

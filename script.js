@@ -61,7 +61,11 @@ document.addEventListener('DOMContentLoaded', function() {
 function handleFormSubmit(form) {
     const emailInput = form.querySelector('input[type="email"]');
     const submitBtn = form.querySelector('.submit-btn');
-    const email = emailInput.value;
+    const messageContainer = form.parentElement.querySelector('.form-message');
+    const email = (emailInput && emailInput.value || '').trim();
+
+    // Read endpoint from form attribute (set by deploy-time env or manually)
+    const endpoint = form.getAttribute('data-endpoint') || window.FIKRA_SIGNUP_ENDPOINT || '';
 
     // Basic validation
     if (!email || !isValidEmail(email)) {
@@ -70,29 +74,55 @@ function handleFormSubmit(form) {
     }
 
     // Disable button and show loading state
-    submitBtn.disabled = true;
-    const originalBtnText = submitBtn.querySelector('.btn-text').textContent;
-    submitBtn.querySelector('.btn-text').textContent = 'Submitting...';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        const originalBtnText = submitBtn.querySelector('.btn-text') ? submitBtn.querySelector('.btn-text').textContent : '';
+        if (submitBtn.querySelector('.btn-text')) submitBtn.querySelector('.btn-text').textContent = 'Submitting...';
 
-    // Store email in localStorage for now
-    // TODO: Replace with actual backend API call
-    storeEmail(email);
-
-    // Simulate API call
-    setTimeout(() => {
-        // Show success message
-        showMessage(form, 'Thanks for joining! We\'ll keep you updated.', 'success');
-
-        // Reset form
+        // If an endpoint is configured, POST there. Otherwise, fallback to localStorage.
+        if (endpoint) {
+            // Use fetch to POST the email to the configured endpoint
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email: email, source: form.id || 'site' })
+            }).then(async res => {
+                if (!res.ok) {
+                    const text = await res.text().catch(() => 'Server error');
+                    throw new Error(text || 'Failed to submit');
+                }
+                showMessage(form, 'Thanks — you are on the list! We\'ll keep you updated.', 'success');
+                emailInput.value = '';
+                trackConversion(email);
+            }).catch(err => {
+                console.error('Signup POST failed:', err);
+                showMessage(form, 'Could not submit right now. We saved your address locally and will retry.', 'error');
+                storeEmail(email);
+            }).finally(() => {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    if (submitBtn.querySelector('.btn-text')) submitBtn.querySelector('.btn-text').textContent = originalBtnText;
+                }
+            });
+        } else {
+            // No remote endpoint configured — store locally and inform user
+            storeEmail(email);
+            showMessage(form, 'Thanks for joining! Offline signup saved locally.', 'success');
+            emailInput.value = '';
+            // Reset button
+            submitBtn.disabled = false;
+            if (submitBtn.querySelector('.btn-text')) submitBtn.querySelector('.btn-text').textContent = originalBtnText;
+            trackConversion(email);
+        }
+    } else {
+        // No submit button found — just store locally
+        storeEmail(email);
+        showMessage(form, 'Thanks for joining! Offline signup saved locally.', 'success');
         emailInput.value = '';
-
-        // Reset button
-        submitBtn.disabled = false;
-        submitBtn.querySelector('.btn-text').textContent = originalBtnText;
-
-        // Track conversion (for analytics)
         trackConversion(email);
-    }, 1000);
+    }
 }
 
 function isValidEmail(email) {
@@ -101,25 +131,32 @@ function isValidEmail(email) {
 }
 
 function showMessage(form, message, type) {
-    // Remove any existing messages
-    const existingMessage = form.parentElement.querySelector('.success-message, .error-message');
-    if (existingMessage) {
-        existingMessage.remove();
+    // Prefer a dedicated .form-message container for accessible updates
+    const messageContainer = form.parentElement.querySelector('.form-message');
+    if (messageContainer) {
+        messageContainer.textContent = message;
+        messageContainer.className = 'form-message ' + (type === 'success' ? 'success-message' : 'error-message');
+
+        // Clear after timeout
+        setTimeout(() => {
+            messageContainer.textContent = '';
+            messageContainer.className = 'form-message';
+        }, 6000);
+        return;
     }
 
-    // Create new message
+    // Fallback: inline messages near form
+    const existingMessage = form.parentElement.querySelector('.success-message, .error-message');
+    if (existingMessage) existingMessage.remove();
+
     const messageDiv = document.createElement('div');
     messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
     messageDiv.textContent = message;
-
-    // Add message after form
     form.parentElement.appendChild(messageDiv);
-
-    // Remove message after 5 seconds
     setTimeout(() => {
         messageDiv.style.opacity = '0';
         setTimeout(() => messageDiv.remove(), 300);
-    }, 5000);
+    }, 6000);
 }
 
 function storeEmail(email) {
