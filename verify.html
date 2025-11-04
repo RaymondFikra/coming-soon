@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Verify Email — Fikra</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container" style="padding:4rem 2rem;text-align:center;">
+    <h1>Confirming your email…</h1>
+    <p id="status">Please wait while we confirm your email address.</p>
+    <p id="action"></p>
+  </main>
+
+  <script>
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+      const email = params.get('email');
+      const token = params.get('token');
+      const statusEl = document.getElementById('status');
+      const actionEl = document.getElementById('action');
+
+      if (!email || !token) {
+        statusEl.textContent = 'Missing verification details.';
+        return;
+      }
+
+      const endpoint = window.FIKRA_VERIFY_ENDPOINT || '';
+      if (!endpoint) {
+        statusEl.textContent = 'No verification endpoint configured. Please contact support.';
+        return;
+      }
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, token: token })
+      }).then(async res => {
+        const body = await res.json().catch(()=>({}));
+        if (res.ok) {
+          statusEl.textContent = 'Email confirmed — thanks!';
+          actionEl.innerHTML = '<a href="/">Return to site</a>';
+        } else {
+          statusEl.textContent = body.message || 'Verification failed.';
+          actionEl.innerHTML = '<a href="/">Return to site</a>';
+        }
+      }).catch(err => {
+        console.error('verify error', err);
+        statusEl.textContent = 'Could not reach verification service. Try again later.';
+      });
+    })();
+  </script>
+</body>
+</html>

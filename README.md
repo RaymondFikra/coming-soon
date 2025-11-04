@@ -17,6 +17,115 @@ Recommended options:
 
 - Alternatively, use a third-party form endpoint (Formspree, ConvertKit, etc.) and set that URL as the form `data-endpoint`.
 
+### Full example: Amplify CLI steps (recommended)
+
+These are the broad steps to deploy the subscribe + verify lambdas and a REST API using the Amplify CLI. Run these from your project root where `amplify` is initialized.
+
+1. Initialize Amplify (if you haven't):
+
+```powershell
+amplify init
+```
+
+2. Add a DynamoDB table (via CloudFormation or the CLI). Example using `amplify add storage`:
+
+```powershell
+amplify add storage
+# Choose NoSQL Database
+# Provide table name: FikraSubscribers
+# Partition key: email (String)
+# Add TTL attribute: ttl (Number) [optional]
+```
+
+3. Add the subscribe function:
+
+```powershell
+amplify add function
+# Provide name: subscribe
+# Runtime: NodeJS
+# Choose to edit the local lambda function now -> paste contents from amplify-backend/subscribe-lambda.js
+```
+
+4. Add the verify function:
+
+```powershell
+amplify add function
+# Provide name: verify
+# Runtime: NodeJS
+# Edit the function with amplify-backend/verify-lambda.js contents
+```
+
+5. Attach policies so the functions can access the DynamoDB table and SES.
+
+You can use the Amplify guided prompts to add storage permissions, or attach a custom policy. Example minimal IAM policy for DynamoDB+SES:
+
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:GetItem",
+				"dynamodb:PutItem",
+				"dynamodb:UpdateItem"
+			],
+			"Resource": [
+				"arn:aws:dynamodb:*:*:table/FikraSubscribers"
+			]
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"ses:SendEmail",
+				"ses:SendRawEmail"
+			],
+			"Resource": "*"
+		}
+	]
+}
+```
+
+6. Add a REST API and connect routes to the functions (subscribe, verify):
+
+```powershell
+amplify add api
+# Choose REST
+# Provide path /subscribe -> connect to subscribe function
+# Provide path /verify -> connect to verify function
+```
+
+7. Configure environment variables for the functions (SUBSCRIBERS_TABLE, FROM_EMAIL, FRONTEND_BASE, VERIFY_TOKEN_TTL) using Amplify Console or `amplify function update`.
+
+8. Push changes:
+
+```powershell
+amplify push
+```
+
+Notes:
+- You must verify your sending email/domain in SES (SES sandbox has restrictions). Verify `FROM_EMAIL` before sending.
+- Set `FRONTEND_BASE` to your site URL so verification links are correct (e.g. https://yourdomain.com).
+
+### Post-deploy: wiring the frontend
+
+After `amplify push` the REST API will have an endpoint. Set this endpoint in the site forms:
+
+- Option A: Edit each form's `data-endpoint` attribute in `index.html` to the full subscribe URL (e.g., `https://<api-id>.execute-api.<region>.amazonaws.com/prod/subscribe`).
+- Option B (recommended): In Amplify Console -> App settings -> Environment variables, add `FIKRA_SIGNUP_ENDPOINT` and `FIKRA_VERIFY_ENDPOINT` and set them to the REST endpoints. The frontend reads `window.FIKRA_SIGNUP_ENDPOINT`/`FIKRA_VERIFY_ENDPOINT` if you set them at deploy-time.
+
+### SES and double opt-in
+
+- SES requires that you verify the source email address or domain before you can send. If your account is in the SES sandbox, you must also verify recipient addresses or request production access.
+- The sample lambda sends a verification email with a link to `verify.html` which calls the verify lambda to mark the address as confirmed.
+
+### Admin / Viewing subscribers
+
+- For a basic admin view, create a simple secured page which calls a backend function that scans DynamoDB (requires additional IAM caution).
+- Alternatively, use DynamoDB console to inspect items (not recommended for production dashboards).
+
+If you'd like, I can prepare Amplify CLI command snippets tailored to your AWS account and then walk you step-by-step through `amplify push` (you will need AWS credentials available locally).
+
 ## Accessibility & UX improvements added
 - Accessible labels and aria-live form messages for screen readers
 - Configurable endpoint for backend POST
